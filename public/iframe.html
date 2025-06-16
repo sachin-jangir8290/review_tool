@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Reviews Widget</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background: transparent;
+      }
+      .reviews-container {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 10px;
+      }
+      .review-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .review-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .profile-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 10px;
+      }
+      .reviewer-info {
+        flex-grow: 1;
+      }
+      .reviewer-name {
+        font-weight: bold;
+        margin: 0;
+        color: #333;
+      }
+      .review-date {
+        color: #666;
+        font-size: 0.9em;
+        margin: 0;
+      }
+      .rating {
+        color: #fbbc04;
+        font-size: 1.2em;
+        margin-left: 10px;
+      }
+      .review-text {
+        color: #333;
+        line-height: 1.5;
+        margin: 0;
+      }
+      .overall-rating {
+        text-align: center;
+        margin-bottom: 20px;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .overall-rating h2 {
+        margin: 0;
+        color: #333;
+      }
+      .overall-rating .rating {
+        font-size: 2em;
+        margin: 10px 0;
+      }
+      .total-reviews {
+        color: #666;
+        margin: 0;
+      }
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+      }
+      .error {
+        color: #d93025;
+        text-align: center;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reviews-container">
+      <div class="overall-rating">
+        <h2>Google Reviews</h2>
+        <div class="rating">★ <span id="overall-rating">0.0</span></div>
+        <p class="total-reviews"><span id="total-reviews">0</span> reviews</p>
+      </div>
+      <div id="reviews-list"></div>
+    </div>
+
+    <script>
+      // Get URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const mapsUrl = urlParams.get("url");
+
+      if (!mapsUrl) {
+        document.querySelector(".reviews-container").innerHTML = `
+                <div class="error">
+                    Please provide a Google Maps URL using the 'url' parameter
+                </div>
+            `;
+      } else {
+        fetchReviews(mapsUrl);
+      }
+
+      async function fetchReviews(url) {
+        try {
+          const response = await fetch("/api/reviews", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch reviews");
+          }
+
+          const data = await response.json();
+          displayReviews(data);
+        } catch (error) {
+          document.querySelector(".reviews-container").innerHTML = `
+                    <div class="error">
+                        Error fetching reviews. Please try again.
+                    </div>
+                `;
+        }
+      }
+
+      function displayReviews(data) {
+        // Update overall rating
+        document.getElementById("overall-rating").textContent =
+          data.rating.toFixed(1);
+        document.getElementById("total-reviews").textContent =
+          data.user_ratings_total;
+
+        // Display reviews
+        const reviewsList = document.getElementById("reviews-list");
+        reviewsList.innerHTML = data.reviews
+          .map(
+            (review) => `
+                <div class="review-card">
+                    <div class="review-header">
+                        <img src="${
+                          review.profile_photo_url
+                        }" alt="Profile" class="profile-photo">
+                        <div class="reviewer-info">
+                            <h3 class="reviewer-name">${review.author_name}</h3>
+                            <p class="review-date">${new Date(
+                              review.time
+                            ).toLocaleDateString()}</p>
+                        </div>
+                        <div class="rating">★ ${review.rating}</div>
+                    </div>
+                    <p class="review-text">${review.text}</p>
+                </div>
+            `
+          )
+          .join("");
+      }
+    </script>
+  </body>
+</html>

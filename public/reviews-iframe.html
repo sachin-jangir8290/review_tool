@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Reviews</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background: transparent;
+      }
+      .reviews-container {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 10px;
+      }
+      .review-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .review-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .profile-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 10px;
+        object-fit: cover;
+      }
+      .reviewer-info {
+        flex-grow: 1;
+      }
+      .reviewer-name {
+        font-weight: bold;
+        margin: 0;
+        color: #333;
+      }
+      .review-date {
+        color: #666;
+        font-size: 0.9em;
+        margin: 0;
+      }
+      .rating {
+        color: #fbbc04;
+        font-size: 1.2em;
+        margin-left: 10px;
+      }
+      .review-text {
+        color: #333;
+        line-height: 1.5;
+        margin: 0;
+        white-space: pre-wrap;
+      }
+      .overall-rating {
+        text-align: center;
+        margin-bottom: 20px;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .overall-rating h2 {
+        margin: 0;
+        color: #333;
+      }
+      .overall-rating .rating {
+        font-size: 2em;
+        margin: 10px 0;
+      }
+      .total-reviews {
+        color: #666;
+        margin: 0;
+      }
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+      }
+      .error {
+        color: #d93025;
+        text-align: center;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reviews-container">
+      <div class="overall-rating">
+        <h2>Google Reviews</h2>
+        <div class="rating">★ <span id="overall-rating">0.0</span></div>
+        <p class="total-reviews"><span id="total-reviews">0</span> reviews</p>
+      </div>
+      <div id="reviews-list"></div>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const widgetId = urlParams.get("id");
+
+      if (!widgetId) {
+        document.querySelector(".reviews-container").innerHTML = `
+          <div class="error">
+            Please provide a widget ID using the 'id' parameter
+          </div>
+        `;
+      } else {
+        fetchWidgetAndReviews(widgetId);
+      }
+
+      async function fetchWidgetAndReviews(id) {
+        try {
+          // Fetch the Google Maps URL using the widget ID
+          const widgetResponse = await fetch(`/api/widgets/get-url/${id}`);
+          if (!widgetResponse.ok) {
+            throw new Error("Widget not found or failed to retrieve URL");
+          }
+          const widgetData = await widgetResponse.json();
+          const mapsUrl = widgetData.url;
+
+          if (!mapsUrl) {
+            throw new Error("Google Maps URL not found for this widget ID");
+          }
+
+          // Now fetch reviews using the obtained Google Maps URL
+          const reviewsResponse = await fetch("/api/reviews", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url: mapsUrl }),
+          });
+
+          if (!reviewsResponse.ok) {
+            throw new Error("Failed to fetch reviews");
+          }
+
+          const data = await reviewsResponse.json();
+          displayReviews(data);
+        } catch (error) {
+          document.querySelector(".reviews-container").innerHTML = `
+            <div class="error">
+              Error: ${error.message}. Please check the widget ID and server status.
+            </div>
+          `;
+        }
+      }
+
+      function displayReviews(data) {
+        document.getElementById("overall-rating").textContent =
+          data.rating.toFixed(1);
+        document.getElementById("total-reviews").textContent =
+          data.user_ratings_total;
+
+        const reviewsList = document.getElementById("reviews-list");
+        reviewsList.innerHTML = data.reviews
+          .map(
+            (review) => `
+          <div class="review-card">
+            <div class="review-header">
+              <img src="${
+                review.profile_photo_url
+              }" alt="Profile" class="profile-photo">
+              <div class="reviewer-info">
+                <h3 class="reviewer-name">${review.author_name}</h3>
+                <p class="review-date">${new Date(
+                  review.time
+                ).toLocaleDateString()}</p>
+              </div>
+              <div class="rating">★ ${review.rating}</div>
+            </div>
+            <p class="review-text">${review.text}</p>
+          </div>
+        `
+          )
+          .join("");
+      }
+    </script>
+  </body>
+</html>
