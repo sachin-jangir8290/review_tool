@@ -4,10 +4,10 @@ const fs = require("fs").promises; // For file operations
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
 
 let puppeteer;
-let chrome;
+let chromium;
 
 try {
-  chrome = require("chrome-aws-lambda");
+  chromium = require("@sparticvs/chromium");
   puppeteer = require("puppeteer-core");
 } catch (e) {
   puppeteer = require("puppeteer");
@@ -207,17 +207,51 @@ app.post("/api/reviews", async (req, res) => {
     );
 
     // If not in cache or expired, proceed with scraping
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--window-size=1280,800",
-      ],
-    });
+    try {
+      if (chromium && chromium.executablePath) {
+        // Render/Cloud environment
+        browser = await puppeteer.launch({
+          args: [
+            ...chromium.args,
+            "--hide-scrollbars",
+            "--disable-web-security",
+          ],
+          executablePath: await chromium.executablePath,
+          headless: chromium.headless,
+          ignoreHTTPSErrors: true,
+        });
+      } else {
+        // Local environment
+        browser = await puppeteer.launch({
+          headless: "new",
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--disable-gpu",
+            "--window-size=1280,800",
+          ],
+        });
+      }
+    } catch (launchError) {
+      console.error(
+        "Error launching browser (fallback to local config):",
+        launchError.message
+      );
+      // Fallback to a default puppeteer launch if chromium fails, for better debugging
+      browser = await puppeteer.launch({
+        headless: "new",
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--disable-gpu",
+          "--window-size=1280,800",
+        ],
+      });
+    }
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
