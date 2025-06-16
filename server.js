@@ -1,8 +1,17 @@
 const express = require("express");
-const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs").promises; // For file operations
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
+
+let puppeteer;
+let chrome;
+
+try {
+  chrome = require("chrome-aws-lambda");
+  puppeteer = require("puppeteer-core");
+} catch (e) {
+  puppeteer = require("puppeteer");
+}
 
 const app = express();
 const port = process.env.PORT || 3001;
