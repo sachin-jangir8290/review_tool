@@ -7,7 +7,7 @@ let puppeteer;
 let chromium;
 
 try {
-  chromium = require("@sparticvs/chromium");
+  chromium = require("@sparticuz/chromium");
   puppeteer = require("puppeteer-core");
 } catch (e) {
   puppeteer = require("puppeteer");
